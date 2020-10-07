@@ -310,6 +310,16 @@ jobs:
           docker push $IMAGE_ID:$ADAPTER_VERSION
           docker push $IMAGE_ID:latest
 
+          echo "${{ secrets.DOCKERHUB_PW }}" | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
+
+          DH_IMAGE_ID=$(sed -n 's/^DOCKER_REGISTRY=//p' .dockerhub.env)
+
+          docker tag $IMAGE_ID "${DH_IMAGE_ID}":adapter-"${ADAPTER_VERSION}"
+          docker tag $IMAGE_ID "${DH_IMAGE_ID}":adapter-latest
+
+          docker push "${DH_IMAGE_ID}":adapter-"${ADAPTER_VERSION}"
+          docker push "${DH_IMAGE_ID}":adapter-latest
+
   scheduler_upload:
     name: Scheduler Publish
     runs-on: ubuntu-latest
@@ -342,6 +352,16 @@ jobs:
 
           docker push $IMAGE_ID:$SCHEDULER_VERSION
           docker push $IMAGE_ID:latest
+
+          echo "${{ secrets.DOCKERHUB_PW }}" | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
+
+          DH_IMAGE_ID=$(sed -n 's/^DOCKER_REGISTRY=//p' .dockerhub.env)
+
+          docker tag $IMAGE_ID "${DH_IMAGE_ID}":scheduler-"${SCHEDULER_VERSION}"
+          docker tag $IMAGE_ID "${DH_IMAGE_ID}":scheduler-latest
+
+          docker push "${DH_IMAGE_ID}":scheduler-"${SCHEDULER_VERSION}"
+          docker push "${DH_IMAGE_ID}":scheduler-latest
 
   storage_upload:
     name: Storage Publish
@@ -389,6 +409,22 @@ jobs:
           docker push $IMAGE_ID_LIQUIBASE:$STORAGE_VERSION
           docker push $IMAGE_ID_LIQUIBASE:latest
 
+          echo "${{ secrets.DOCKERHUB_PW }}" | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
+
+          DH_IMAGE_ID=$(sed -n 's/^DOCKER_REGISTRY=//p' .dockerhub.env)
+
+          docker tag $IMAGE_ID_STORAGE "${DH_IMAGE_ID}":storage-"${STORAGE_VERSION}"
+          docker tag $IMAGE_ID_STORAGE "${DH_IMAGE_ID}":storage-latest
+
+          docker tag $IMAGE_ID_LIQUIBASE "${DH_IMAGE_ID}":storage-db-liquibase-"${STORAGE_VERSION}"
+          docker tag $IMAGE_ID_LIQUIBASE "${DH_IMAGE_ID}":storage-db-liquibase-latest
+
+          docker push "${DH_IMAGE_ID}":storage-"${STORAGE_VERSION}"
+          docker push "${DH_IMAGE_ID}":storage-latest
+
+          docker push "${DH_IMAGE_ID}":storage-db-liquibase-"${STORAGE_VERSION}"
+          docker push "${DH_IMAGE_ID}":storage-db-liquibase-latest
+
   pipeline_upload:
     name: Pipeline Publish
     runs-on: ubuntu-latest
@@ -421,6 +457,16 @@ jobs:
 
           docker push $IMAGE_ID:$PIPELINE_VERSION
           docker push $IMAGE_ID:latest
+
+          echo "${{ secrets.DOCKERHUB_PW }}" | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
+
+          DH_IMAGE_ID=$(sed -n 's/^DOCKER_REGISTRY=//p' .dockerhub.env)
+
+          docker tag $IMAGE_ID "${DH_IMAGE_ID}":pipeline-"${PIPELINE_VERSION}"
+          docker tag $IMAGE_ID "${DH_IMAGE_ID}":pipeline-latest
+
+          docker push "${DH_IMAGE_ID}":pipeline-"${PIPELINE_VERSION}"
+          docker push "${DH_IMAGE_ID}":pipeline-latest
 
   notifcation_upload:
     name: Notifcation Publish
@@ -455,6 +501,16 @@ jobs:
           docker push $IMAGE_ID:$NOTIFICATION_VERSION
           docker push $IMAGE_ID:latest
 
+          echo "${{ secrets.DOCKERHUB_PW }}" | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
+
+          DH_IMAGE_ID=$(sed -n 's/^DOCKER_REGISTRY=//p' .dockerhub.env)
+
+          docker tag $IMAGE_ID "${DH_IMAGE_ID}":notification-"${NOTIFICATION_VERSION}"
+          docker tag $IMAGE_ID "${DH_IMAGE_ID}":notification-latest
+
+          docker push "${DH_IMAGE_ID}":notification-"${NOTIFICATION_VERSION}"
+          docker push "${DH_IMAGE_ID}":notification-latest
+
   ui_upload:
     name: UI Publish
     runs-on: ubuntu-latest
@@ -487,3 +543,42 @@ jobs:
 
           docker push $IMAGE_ID:$UI_VERSION
           docker push $IMAGE_ID:latest
+
+          echo "${{ secrets.DOCKERHUB_PW }}" | docker login -u ${{ secrets.DOCKERHUB_USER }} --password-stdin
+
+          DH_IMAGE_ID=$(sed -n 's/^DOCKER_REGISTRY=//p' .dockerhub.env)
+
+          docker tag $IMAGE_ID "${DH_IMAGE_ID}":ui-"${UI_VERSION}"
+          docker tag $IMAGE_ID "${DH_IMAGE_ID}":ui-latest
+
+          docker push "${DH_IMAGE_ID}":ui-"${UI_VERSION}"
+          docker push "${DH_IMAGE_ID}":ui-latest
+
+  deploy:
+    name: Deploy ODS to k8s
+    runs-on: ubuntu-latest
+
+    needs: [adapter_upload, scheduler_upload, storage_upload, pipeline_upload, notification_upload, ui_upload]
+
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/kubernetes'
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: |
+          ./deployment/mk-kubeconfig.sh
+
+      - uses: Azure/k8s-set-context@v1
+        with:
+          kubeconfig: ./deployment/kube.config
+
+      - uses: azure/k8s-bake@v1
+        with:
+          renderEngine: 'kustomize'
+          kustomizationPath: './deployment/kustomize/'
+          kubectl-version: 'latest'
+        id: bake
+
+      - uses: Azure/k8s-deploy@v1
+        with:
+          manifests: ${{ steps.bake.outputs.manifestsBundle }}
+          namespace: 'staging'
