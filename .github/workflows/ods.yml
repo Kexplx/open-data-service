@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - kubernetes
   pull_request:
     branches:
       - master
@@ -282,7 +283,7 @@ jobs:
 
     needs: [systemtest]
 
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/kubernetes'
     steps:
       - uses: actions/checkout@v2
 
@@ -326,7 +327,7 @@ jobs:
 
     needs: [systemtest]
 
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/kubernetes'
     steps:
       - uses: actions/checkout@v2
 
@@ -369,7 +370,7 @@ jobs:
 
     needs: [systemtest]
 
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/kubernetes'
     steps:
       - uses: actions/checkout@v2
 
@@ -431,7 +432,7 @@ jobs:
 
     needs: [systemtest]
 
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/kubernetes'
     steps:
       - uses: actions/checkout@v2
 
@@ -474,7 +475,7 @@ jobs:
 
     needs: [systemtest]
 
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/kubernetes'
     steps:
       - uses: actions/checkout@v2
 
@@ -517,7 +518,7 @@ jobs:
 
     needs: [systemtest]
 
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/kubernetes'
     steps:
       - uses: actions/checkout@v2
 
